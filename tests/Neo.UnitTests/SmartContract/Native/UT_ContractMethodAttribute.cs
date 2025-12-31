@@ -20,6 +20,8 @@ namespace Neo.UnitTests.SmartContract.Native
     [TestClass]
     public class UT_ContractMethodAttribute
     {
+        private const BindingFlags MethodFlags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public;
+
         [TestMethod]
         public void TestConstructorOneArg()
         {
@@ -120,53 +122,42 @@ namespace Neo.UnitTests.SmartContract.Native
         [TestMethod]
         public void TestParameterDetectionAndSkipping()
         {
-            // This test specifically verifies the fix for the bug where IsAssignableFrom.
-            var flags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public;
-            var testType = typeof(TestParameterDetection);
-
-            // Test IReadOnlyStore parameter detection
-            var methodIReadOnlyStore = testType.GetMethod(nameof(TestParameterDetection.MethodWithIReadOnlyStore), flags);
-            var metadataIReadOnlyStore = new ContractMethodMetadata(methodIReadOnlyStore!, new ContractMethodAttribute());
+            var metadataIReadOnlyStore = GetMetadata<TestParameterDetection>(nameof(TestParameterDetection.MethodWithIReadOnlyStore));
             Assert.IsTrue(metadataIReadOnlyStore.NeedSnapshot, "IReadOnlyStore parameter should set NeedSnapshot to true");
             Assert.IsFalse(metadataIReadOnlyStore.NeedApplicationEngine, "IReadOnlyStore parameter should not set NeedApplicationEngine to true");
-            Assert.AreEqual(1, metadataIReadOnlyStore.Parameters.Length, "IReadOnlyStore parameter should be skipped, leaving only UInt160");
+            Assert.HasCount(1, metadataIReadOnlyStore.Parameters, "IReadOnlyStore parameter should be skipped, leaving only UInt160");
             Assert.AreEqual(typeof(UInt160), metadataIReadOnlyStore.Parameters[0].Type, "Remaining parameter should be UInt160");
 
             // Test DataCache parameter detection
-            var methodDataCache = testType.GetMethod(nameof(TestParameterDetection.MethodWithDataCache), flags);
-            var metadataDataCache = new ContractMethodMetadata(methodDataCache!, new ContractMethodAttribute());
+            var metadataDataCache = GetMetadata<TestParameterDetection>(nameof(TestParameterDetection.MethodWithDataCache));
             Assert.IsTrue(metadataDataCache.NeedSnapshot, "DataCache parameter should set NeedSnapshot to true");
             Assert.IsFalse(metadataDataCache.NeedApplicationEngine, "DataCache parameter should not set NeedApplicationEngine to true");
-            Assert.AreEqual(1, metadataDataCache.Parameters.Length, "DataCache parameter should be skipped, leaving only UInt160");
+            Assert.HasCount(1, metadataDataCache.Parameters, "DataCache parameter should be skipped, leaving only UInt160");
             Assert.AreEqual(typeof(UInt160), metadataDataCache.Parameters[0].Type, "Remaining parameter should be UInt160");
 
             // Test ApplicationEngine parameter detection
-            var methodApplicationEngine = testType.GetMethod(nameof(TestParameterDetection.MethodWithApplicationEngine), flags);
-            var metadataApplicationEngine = new ContractMethodMetadata(methodApplicationEngine!, new ContractMethodAttribute());
+            var metadataApplicationEngine = GetMetadata<TestParameterDetection>(nameof(TestParameterDetection.MethodWithApplicationEngine));
             Assert.IsTrue(metadataApplicationEngine.NeedApplicationEngine, "ApplicationEngine parameter should set NeedApplicationEngine to true");
             Assert.IsFalse(metadataApplicationEngine.NeedSnapshot, "ApplicationEngine parameter should not set NeedSnapshot to true");
-            Assert.AreEqual(1, metadataApplicationEngine.Parameters.Length, "ApplicationEngine parameter should be skipped, leaving only UInt160");
+            Assert.HasCount(1, metadataApplicationEngine.Parameters, "ApplicationEngine parameter should be skipped, leaving only UInt160");
             Assert.AreEqual(typeof(UInt160), metadataApplicationEngine.Parameters[0].Type, "Remaining parameter should be UInt160");
 
             // Test normal parameter (no special parameter)
-            var methodNormal = testType.GetMethod(nameof(TestParameterDetection.MethodWithNormalParameter), flags);
-            var metadataNormal = new ContractMethodMetadata(methodNormal!, new ContractMethodAttribute());
+            var metadataNormal = GetMetadata<TestParameterDetection>(nameof(TestParameterDetection.MethodWithNormalParameter));
             Assert.IsFalse(metadataNormal.NeedSnapshot, "Normal parameter should not set NeedSnapshot to true");
             Assert.IsFalse(metadataNormal.NeedApplicationEngine, "Normal parameter should not set NeedApplicationEngine to true");
-            Assert.AreEqual(1, metadataNormal.Parameters.Length, "Normal parameter should not be skipped");
+            Assert.HasCount(1, metadataNormal.Parameters, "Normal parameter should not be skipped");
             Assert.AreEqual(typeof(UInt160), metadataNormal.Parameters[0].Type, "Parameter should be UInt160");
 
             // Test IReadOnlyStore only (no other parameters)
-            var methodIReadOnlyStoreOnly = testType.GetMethod(nameof(TestParameterDetection.MethodWithIReadOnlyStoreOnly), flags);
-            var metadataIReadOnlyStoreOnly = new ContractMethodMetadata(methodIReadOnlyStoreOnly!, new ContractMethodAttribute());
+            var metadataIReadOnlyStoreOnly = GetMetadata<TestParameterDetection>(nameof(TestParameterDetection.MethodWithIReadOnlyStoreOnly));
             Assert.IsTrue(metadataIReadOnlyStoreOnly.NeedSnapshot, "IReadOnlyStore parameter should set NeedSnapshot to true");
-            Assert.AreEqual(0, metadataIReadOnlyStoreOnly.Parameters.Length, "IReadOnlyStore parameter should be skipped, leaving no parameters");
+            Assert.IsEmpty(metadataIReadOnlyStoreOnly.Parameters, "IReadOnlyStore parameter should be skipped, leaving no parameters");
 
             // Test DataCache only (no other parameters)
-            var methodDataCacheOnly = testType.GetMethod(nameof(TestParameterDetection.MethodWithDataCacheOnly), flags);
-            var metadataDataCacheOnly = new ContractMethodMetadata(methodDataCacheOnly!, new ContractMethodAttribute());
+            var metadataDataCacheOnly = GetMetadata<TestParameterDetection>(nameof(TestParameterDetection.MethodWithDataCacheOnly));
             Assert.IsTrue(metadataDataCacheOnly.NeedSnapshot, "DataCache parameter should set NeedSnapshot to true");
-            Assert.AreEqual(0, metadataDataCacheOnly.Parameters.Length, "DataCache parameter should be skipped, leaving no parameters");
+            Assert.IsEmpty(metadataDataCacheOnly.Parameters, "DataCache parameter should be skipped, leaving no parameters");
         }
 
         [TestMethod]
@@ -175,11 +166,7 @@ namespace Neo.UnitTests.SmartContract.Native
             // This test verifies that CustomReadOnlyStore (a custom implementation of IReadOnlyStore)
             // is NOT accepted as a parameter type. Only IReadOnlyStore interface itself or DataCache
             // (and its subclasses) are allowed.
-            var flags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public;
-            var testType = typeof(TestBugDetection);
-
-            var method = testType.GetMethod(nameof(TestBugDetection.MethodWithCustomReadOnlyStore), flags);
-            var metadata = new ContractMethodMetadata(method!, new ContractMethodAttribute());
+            var metadata = GetMetadata<TestBugDetection>(nameof(TestBugDetection.MethodWithCustomReadOnlyStore));
 
             // CustomReadOnlyStore should NOT be accepted, even though it implements IReadOnlyStore
             // Only IReadOnlyStore interface itself or DataCache are allowed
@@ -189,10 +176,15 @@ namespace Neo.UnitTests.SmartContract.Native
             Assert.IsFalse(metadata.NeedApplicationEngine,
                 "CustomReadOnlyStore should not set NeedApplicationEngine to true");
             // Since NeedSnapshot is false, the parameter should not be skipped
-            Assert.AreEqual(2, metadata.Parameters.Length,
-                "CustomReadOnlyStore parameter should not be skipped, leaving both CustomReadOnlyStore and UInt160");
+            Assert.HasCount(2, metadata.Parameters, "CustomReadOnlyStore parameter should not be skipped, leaving both CustomReadOnlyStore and UInt160");
             Assert.AreEqual(typeof(UInt160), metadata.Parameters[1].Type,
                 "Second parameter should be UInt160");
+        }
+        private static ContractMethodMetadata GetMetadata<T>(string methodName)
+        {
+            var method = typeof(T).GetMethod(methodName, MethodFlags);
+            Assert.IsNotNull(method, $"{typeof(T).Name}.{methodName} not found");
+            return new ContractMethodMetadata(method!, new ContractMethodAttribute());
         }
     }
 }
