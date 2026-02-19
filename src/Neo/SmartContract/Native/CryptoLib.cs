@@ -192,7 +192,7 @@ namespace Neo.SmartContract.Native
                     verifier.BlockUpdate(message, 0, message.Length);
                     return verifier.VerifySignature(signature);
                 }
-                catch (Exception)
+                catch
                 {
                     return false;
                 }
