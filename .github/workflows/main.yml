@@ -61,6 +61,7 @@ jobs:
         dotnet test /p:GITHUB_ACTIONS=true /p:CollectCoverage=true /p:CoverletOutput='${{ github.workspace }}/TestResults/coverage/' /p:MergeWith='${{ github.workspace }}/TestResults/coverage/coverage.json' /p:CoverletOutputFormat=\"lcov,json\" -m:1
     - name: Coveralls
       if: matrix.os == 'ubuntu-latest'
+      continue-on-error:true
       uses: coverallsapp/github-action@v2
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
